@@ -8,4 +8,13 @@ jobs:
       - uses: astral-sh/setup-uv@v5
       - run: uv sync
       - run: uv run pytest tests -q
-      - run: uv run python examples/sentinel/sentinel.py   # the example must run offline
+      # Known-answer drill: the sentinel ships with a deliberately broken service, and a
+      # non-clean verdict exits 1 (the headless surface). CI asserts the plant IS caught —
+      # an exit code of 0 here would mean the watchdog missed its own fixture.
+      - name: sentinel known-answer (must catch the planted failure)
+        run: |
+          set +e
+          uv run python examples/sentinel/sentinel.py
+          code=$?
+          set -e
+          [ "$code" -eq 1 ] || { echo "expected exit 1 (plant caught), got $code"; exit 1; }
