@@ -11,6 +11,10 @@ dependencies = [
     "pyyaml>=6.0",
 ]
 
+[project.urls]
+Repository = "https://github.com/scholih/bounded-agent"
+Manifesto = "https://medium.com/@scholih/the-edge-is-the-harness-not-the-model-a543abade391"
+
 [dependency-groups]
 dev = ["pytest>=8.0"]
 
