@@ -5,3 +5,4 @@ __pycache__/
 dist/
 *.egg-info/
 examples/sentinel/run_ledger/
+tok.txt

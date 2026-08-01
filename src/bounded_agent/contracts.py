@@ -77,7 +77,13 @@ class ContractBook(BaseModel):
         """Parse a ``contracts:`` YAML file. Raises on absence or malformation — the caller
         decides whether that halts startup or degrades to observe-only, but it is never
         silently treated as an empty (or worse, permissive) book."""
-        doc = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
+        p = Path(path)
+        if not p.exists():
+            raise FileNotFoundError(
+                f"contract book not found: {p} — an agent without a book has no "
+                "authorization. Create the YAML (see the README quickstart) or pass "
+                "the correct path.")
+        doc = yaml.safe_load(p.read_text(encoding="utf-8"))
         if not isinstance(doc, dict) or "contracts" not in doc:
             raise ValueError(f"{path}: expected a top-level 'contracts' list")
         return cls(contracts=tuple(Contract(**e) for e in doc["contracts"]))

@@ -31,6 +31,18 @@ test decides the flow; the LLM reasons inside well-fenced steps and never pilots
 uv add bounded-agent            # or: pip install bounded-agent
 ```
 
+First, the book — autonomy starts with a human-edited file, so the quickstart does too.
+`contracts.yaml`:
+
+```yaml
+contracts:
+  - name: queue-worker
+    status: active
+    scope: checkout-stack
+    tier: act                     # observe | propose | act
+    allows: [restart_worker]
+```
+
 ```python
 from bounded_agent import ContractBook, Gate, ActionSet, Envelope, EvidenceLedger
 
