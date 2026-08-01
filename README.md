@@ -13,6 +13,8 @@ don't rebuild it, we add the autonomy layer it deliberately leaves to you).
 The design stance, in one sentence: **deterministic spine, agentic leaves** — code you can
 test decides the flow; the LLM reasons inside well-fenced steps and never pilots the loop.
 
+**The manifesto:** [The Edge Is the Harness, Not the Model](https://medium.com/@scholih/the-edge-is-the-harness-not-the-model-a543abade391) — the argument this library implements, and the start of a series that takes each primitive in depth.
+
 ## The five primitives
 
 | Module | Primitive | The failure it prevents |
