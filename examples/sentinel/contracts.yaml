@@ -1,0 +1,21 @@
+# The book of what the sentinel may do. A human edits this file; the agent only reads it.
+# tier: observe = read & report · propose = draft a fix, human executes · act = execute `allows`
+contracts:
+  - name: queue-worker
+    status: active
+    scope: checkout-stack
+    tier: act
+    allows: [restart_worker]
+    owner: platform-team          # extra fields are fine — the library ignores them
+
+  - name: cache
+    status: active
+    scope: checkout-stack
+    tier: propose                 # a human executes cache fixes; the sentinel may only draft
+    allows: [clear_cache]
+
+  - name: payments-db
+    status: proposed              # not yet signed off — grants NOTHING until status: active
+    scope: checkout-stack
+    tier: act
+    allows: [failover_replica]
