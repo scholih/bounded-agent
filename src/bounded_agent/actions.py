@@ -57,6 +57,15 @@ class ExecOutcome(BaseModel):
     records: tuple[ActionRecord, ...] = ()
     executed: int = 0                   # attempts, successful or not
 
+    def summary(self) -> str:
+        """One human line for logs/pagers: what ran, what was refused, what halted."""
+        if self.blocked_reason is not None:
+            return f"blocked: {self.blocked_reason}"
+        if not self.records:
+            return "0 executed (nothing actionable)"
+        parts = [f"{r.contract}:{r.action}={r.status}" for r in self.records]
+        return f"{self.executed} executed | " + "; ".join(parts)
+
 
 class ActionSet:
     """The registered half of the double-closed check, plus the execution loop."""

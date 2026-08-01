@@ -107,3 +107,18 @@ def test_every_record_is_notified_and_ledgered(tmp_path):
                             ledger=ledger, period=DAY)
     lines = (tmp_path / "ev" / f"{DAY.isoformat()}.jsonl").read_text().splitlines()
     assert len(lines) == 2 and len(seen) == 2       # the refusal is recorded too
+
+
+def test_outcome_summary_reads_like_a_report():
+    calls: list[str] = []
+    out = _actions(calls).execute([("svc", ("restart_worker", "drop_database"))],
+                                  Envelope(armed=True, max_actions_per_run=5))
+    s = out.summary()
+    assert "1 executed" in s
+    assert "svc:restart_worker=executed-ok" in s
+    assert "svc:drop_database=refused" in s
+
+
+def test_outcome_summary_when_blocked():
+    out = _actions([]).execute([("svc", ("restart_worker",))], Envelope())
+    assert out.summary() == "blocked: disarmed"

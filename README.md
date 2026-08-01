@@ -41,6 +41,16 @@ contracts:
     scope: checkout-stack
     tier: act                     # observe | propose | act
     allows: [restart_worker]
+  - name: cache
+    status: active
+    scope: checkout-stack
+    tier: propose                 # may draft fixes; a human executes them
+    allows: [clear_cache]
+  - name: payments-db
+    status: proposed              # not signed off — grants NOTHING until active
+    scope: checkout-stack
+    tier: act
+    allows: [failover_replica]
 ```
 
 ```python
@@ -49,8 +59,15 @@ from pathlib import Path
 
 from bounded_agent import ActionSet, ContractBook, Envelope, EvidenceLedger, Gate
 
+print("1. the book — who may do what, declared by a human:")
 book = ContractBook.load("contracts.yaml")            # raises loudly if missing/malformed
-granted = book.granted(Gate(required_scope="checkout-stack", required_tier="act"))
+for c in book.contracts:
+    print(f"   {c.name}: status={c.status} scope={c.scope} tier={c.tier} allows={list(c.allows)}")
+
+gate = Gate(required_scope="checkout-stack", required_tier="act")
+granted = book.granted(gate)
+print(f"\n2. the gate — scope={gate.required_scope!r} at tier '{gate.required_tier}' grants:")
+print(f"   {granted or 'nothing — no active, in-scope contract at this tier'}")
 
 actions = ActionSet()                                 # the implemented closed set:
 actions.register("restart_worker", lambda: (True, "worker restarted"))
@@ -58,20 +75,42 @@ actions.register("restart_worker", lambda: (True, "worker restarted"))
 env = Envelope(armed=True,                            # ships disarmed; arming is explicit
                kill_switch_path=Path("STOP"),         # `touch STOP` halts everything
                max_actions_per_run=2,
-               notify=print)                          # act-then-report (stand in a pager here)
+               notify=lambda msg: print(f"   [report] {msg}"))
+ks = "PRESENT" if env.kill_switch_path.exists() else "absent"
+print(f"\n3. the envelope — armed={env.armed}, kill-switch {ks}, breaker {env.max_actions_per_run}/run")
 
+print("\n4. executing (double-closed: contracted AND registered; every outcome reported):")
 outcome = actions.execute(list(granted.items()), env,
                           ledger=EvidenceLedger(Path("ledger")),
                           period=dt.date.today())
-print(outcome.executed, "action(s) —", outcome.records[0].status)
+
+print(f"\n5. outcome — {outcome.summary()}")
+print(f"   ledger: ledger/{dt.date.today().isoformat()}.jsonl (append-only; every run adds lines)")
 ```
 
-Both files as-is, `python` it, and you'll see the act-then-report line fire and one
-`executed-ok` record land in `ledger/` — the whole authorization chain in 20 lines.
+Run it and the output narrates the authorization chain — note the gate silently denying
+`cache` (propose tier) and `payments-db` (not signed off):
 
-An action fires only if it appears in **both** the contract's `allows` list **and** the
-registered set — and only inside an armed envelope with no kill-switch present and breaker
-budget remaining. Everything that happens (and everything refused) is one JSONL line.
+```
+1. the book — who may do what, declared by a human:
+   queue-worker: status=active scope=checkout-stack tier=act allows=['restart_worker']
+   cache: status=active scope=checkout-stack tier=propose allows=['clear_cache']
+   payments-db: status=proposed scope=checkout-stack tier=act allows=['failover_replica']
+
+2. the gate — scope='checkout-stack' at tier 'act' grants:
+   {'queue-worker': ('restart_worker',)}
+
+3. the envelope — armed=True, kill-switch absent, breaker 2/run
+
+4. executing (double-closed: contracted AND registered; every outcome reported):
+   [report] executed-ok: restart_worker on queue-worker (worker restarted)
+
+5. outcome — 1 executed | queue-worker:restart_worker=executed-ok
+   ledger: ledger/2026-08-01.jsonl (append-only; every run adds lines)
+```
+
+Then `touch STOP` and run again to watch the kill-switch refuse everything — and land in
+the ledger anyway (the halt is on the record too; silence is impossible).
 
 For the LLM side, see `examples/sentinel/` — a complete service-health watchdog: deterministic
 probes → an escalate-only LLM verdict → a typed diagnosis → contract-bounded remediation.

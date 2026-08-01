@@ -1,6 +1,6 @@
 [project]
 name = "bounded-agent"
-version = "0.1.2"
+version = "0.1.3"
 description = "Contract-bounded autonomy for LLM agents: five small primitives that make an agent safe to leave alone."
 readme = "README.md"
 requires-python = ">=3.12"
