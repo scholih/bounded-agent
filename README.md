@@ -44,20 +44,30 @@ contracts:
 ```
 
 ```python
-from bounded_agent import ContractBook, Gate, ActionSet, Envelope, EvidenceLedger
+import datetime as dt
+from pathlib import Path
+
+from bounded_agent import ActionSet, ContractBook, Envelope, EvidenceLedger, Gate
 
 book = ContractBook.load("contracts.yaml")            # raises loudly if missing/malformed
-gate = Gate(required_scope="checkout-stack", required_tier="act")
-granted = book.granted(gate)                          # {contract-name: (allowed actions,)}
+granted = book.granted(Gate(required_scope="checkout-stack", required_tier="act"))
 
-actions = ActionSet()
-actions.register("restart_worker", restart_worker)    # the implemented closed set
+actions = ActionSet()                                 # the implemented closed set:
+actions.register("restart_worker", lambda: (True, "worker restarted"))
 
-env = Envelope(armed=True, kill_switch_path=Path("STOP"),
-               max_actions_per_run=2, notify=page_the_operator)
+env = Envelope(armed=True,                            # ships disarmed; arming is explicit
+               kill_switch_path=Path("STOP"),         # `touch STOP` halts everything
+               max_actions_per_run=2,
+               notify=print)                          # act-then-report (stand in a pager here)
+
 outcome = actions.execute(list(granted.items()), env,
-                          ledger=EvidenceLedger(Path("ledger")), period=today)
+                          ledger=EvidenceLedger(Path("ledger")),
+                          period=dt.date.today())
+print(outcome.executed, "action(s) —", outcome.records[0].status)
 ```
+
+Both files as-is, `python` it, and you'll see the act-then-report line fire and one
+`executed-ok` record land in `ledger/` — the whole authorization chain in 20 lines.
 
 An action fires only if it appears in **both** the contract's `allows` list **and** the
 registered set — and only inside an armed envelope with no kill-switch present and breaker
